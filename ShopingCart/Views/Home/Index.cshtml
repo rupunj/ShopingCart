@@ -1,0 +1,232 @@
+﻿@using ShopingCart.Models.Response;
+@model ProductResponse;
+
+
+<h2>Product List</h2>
+
+<div class="product-container">
+    @foreach (var product in Model.products)
+    {
+        <div class="product">
+            <div class="product-name">@product.Name</div>
+            <div class="product-price">$@product.Price</div>
+            <button class="add-to-cart" data-product-id="@product.Id">Add to Cart</button>
+        </div>
+    }
+</div>
+
+<h2>Cart</h2>
+<div id="cart-summary">
+    <div class="cart-info">
+        <label>Total Product Count:</label>
+        <span id="lbltotal_prod_count" class="total-count"></span>
+    </div>
+    <div class="cart-info">
+        <label>Total Cart Value:</label>
+        <span id="lbltotal_cart_value" class="total-value"></span>
+    </div>
+</div>
+<table id="cart-table">
+    <thead>
+        <tr>
+            <th>Product Name</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Remove Qty</th>
+            <th>Total Price</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+
+<style>
+    .product-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .product {
+        width: 200px;
+        height: 250px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+        background-color: #f9f9f9;
+        transition: transform 0.3s ease;
+    }
+
+        .product:hover {
+            transform: translateY(-5px);
+        }
+
+    .product-name {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+    }
+
+    .product-price {
+        color: #888;
+        margin-bottom: 10px;
+    }
+
+    .add-to-cart {
+        display: block;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+        .add-to-cart:hover {
+            background-color: #0056b3;
+        }
+
+    #cart-summary {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .cart-info {
+        display: flex;
+        align-items: center;
+    }
+
+        .cart-info label {
+            font-weight: bold;
+            margin-right: 5px;
+            color: #333;
+        }
+
+    .total-count,
+    .total-value {
+        font-weight: bold;
+        font-size: 20px;
+        color: #007bff;
+    }
+
+    #cart-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        #cart-table th,
+        #cart-table td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        #cart-table th {
+            font-weight: bold;
+            background-color: #f2f2f2;
+        }
+</style>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+
+
+$(document).ready(function () {
+  var addToCartButtons = $('.add-to-cart');
+  var cartTableBody = $('#cart-table tbody');
+  var Total_Product = 0;
+  var Total_cart = 0;
+
+  addToCartButtons.on('click', function () {
+    var button = $(this);
+    var productId = button.attr('data-product-id');
+    var product = getProductById(productId);
+
+    if (product) {
+      var existingRow = getCartRowByProductId(productId);
+
+      if (existingRow) {
+        var quantityCell = existingRow.find('.quantity');
+        var quantity = parseInt(quantityCell.text()) + 1;
+        quantityCell.text(quantity);
+        var totalPriceCell = existingRow.find('.totalPrice');
+        var totprice = parseFloat(quantityCell.text()) * product.price.toFixed(2);
+        totalPriceCell.text(totprice.toFixed(2));
+
+        Total_cart += parseFloat(product.price.toFixed(2));
+        $('#lbltotal_cart_value').text(Total_cart);
+      } else {
+        var row = $('<tr>').attr('data-product-id', productId);
+    var nameCell = $('<td>');
+        var priceCell = $('<td>');
+        var quantityCell = $('<td>').addClass('quantity');
+        var minusButtonCell = $('<td>');
+        var minusButton = $('<button>').text('-');
+            var totalPrice = $('<td>').addClass('totalPrice');
+
+        nameCell.text(product.name);
+        priceCell.text('$' + product.price.toFixed(2));
+        quantityCell.text(1);
+        minusButtonCell.append(minusButton);
+        totalPrice.text('$' + product.price.toFixed(2)).addClass('totalPrice');
+
+        Total_Product += 1;
+        $('#lbltotal_prod_count').text(Total_Product);
+
+        Total_cart += parseFloat(product.price.toFixed(2));
+        $('#lbltotal_cart_value').text(Total_cart);
+
+        minusButton.on('click', function () {
+        var quantity = parseInt(quantityCell.text());
+        if (quantity > 1) {
+        quantityCell.text(quantity - 1);
+        totalPrice.text((product.price.toFixed(2) * (quantity - 1)).toFixed(2));
+        } else {
+        row.remove();
+        Total_Product -= 1;
+        $('#lbltotal_prod_count').text(Total_Product);
+        }
+
+        Total_cart -= parseFloat(product.price.toFixed(2));
+        $('#lbltotal_cart_value').text(Total_cart);
+        });
+
+        row.append(nameCell);
+        row.append(priceCell);
+        row.append(quantityCell);
+        row.append(minusButtonCell);
+        row.append(totalPrice);
+
+        cartTableBody.append(row);
+        }
+        }
+        });
+
+        function getProductById(id) {
+            var products = @Html.Raw(Json.Serialize(Model.products));
+        return products.find(function (product) {
+        return product.id === parseInt(id);
+        });
+        }
+
+        function getCartRowByProductId(id) {
+        var rows = $('#cart-table tbody tr');
+        for (var i = 0; i < rows.length; i++) {
+        var productId = rows.eq(i).attr('data-product-id');
+        if (productId === id) {
+        return rows.eq(i);
+        }
+        }
+        return null;
+        }
+  
+
+  });
+</script>

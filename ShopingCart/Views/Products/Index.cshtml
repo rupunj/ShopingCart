@@ -1,0 +1,215 @@
+﻿@using ShopingCart.Models.Response;
+@model ProductResponse;
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product List</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+</head>
+<body>
+    <div class="container">
+        <h2>Product List</h2>
+        @if (ViewBag.Rights.Contains("Create"))
+        {
+            <button class="btn btn-success create-product" data-toggle="modal" data-target="#productModal">Create New Product</button>
+        }
+
+        <table id="product-table" class="table">
+            <thead>
+                <tr>
+                    <th>Product ID</th>
+                    <th>Product Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in Model.products)
+                {
+                    <tr>
+                        <td>@product.Id</td>
+                        <td>@product.Name</td>
+                        <td>
+                            @{
+                                if (ViewBag.Rights.Contains("Edit")) 
+                                {
+                                    <button class="btn btn-primary edit-product" data-product-id="@product.Id" data-toggle="modal" data-target="#productModal" data-action="edit">Edit</button>
+                                }
+                                if (ViewBag.Rights.Contains("View"))
+                                {
+                                    <button class="btn btn-info view-product" data-product-id="@product.Id" data-toggle="modal" data-target="#productModal" data-action="view">View</button>
+                                }
+                            }                          
+                           
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- Product Modal -->
+        <div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="productModalLabel">Product Details</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="productForm">
+                            <div class="form-group">
+                                <label for="productId">Product ID</label>
+                                <input type="text" class="form-control" id="productId" name="productId" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="productName">Product Name</label>
+                                <input type="text" class="form-control" id="productName" name="productName">
+                            </div>
+                            <div class="form-group">
+                                <label for="productPrice">Product Price</label>
+                                <input type="text" class="form-control" id="productPrice" name="productPrice">
+                            </div>
+                            <div class="form-group">
+                                <label for="productQuantity">Product Quantity</label>
+                                <input type="text" class="form-control" id="productQuantity" name="productQuantity">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" id="saveProduct">Save</button>
+                        <button type="button" class="btn btn-secondary" id="closeModal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            var modal = $('#productModal');
+            var form = $('#productForm');
+            var saveButton = $('#saveProduct');
+            var ModelStatus;
+
+            $('.edit-product, .view-product').click(function () {
+                var productId = $(this).data('product-id');
+                var action = $(this).data('action');
+             
+                form.trigger('reset');
+               
+                $.ajax({
+                    url: '/Products/GetProduct',
+                    type: 'GET',
+                    data: { id: productId },
+                    success: function (data) {
+
+                        $('#productId').val(data.products[0].id);
+                        $('#productName').val(data.products[0].name);
+                        $('#productPrice').val(data.products[0].price);
+                        $('#productQuantity').val(data.products[0].quantity);
+
+                        if (action === 'view') {
+                            $('#productModalLabel').text('View Product');
+                            form.find('input').prop('disabled', true);
+                            saveButton.hide();
+                            ModelStatus = 'view'
+                        } else if (action === 'edit') {
+                            $('#productModalLabel').text('Edit Product');
+                            form.find('input').prop('disabled', false);
+                            ModelStatus = 'edit';
+                            saveButton.show();
+                        }
+
+                        modal.modal('show');
+                    },
+                    error: function () {
+                        alert('Failed to retrieve product details.');
+                    }
+                });
+            });
+
+            $('.create-product').click(function () {
+                // Clear the form before opening
+                form.trigger('reset');
+                $('#productModalLabel').text('Create New Product');
+                form.find('input').prop('disabled', false);
+                ModelStatus = 'create';
+                saveButton.show();
+                modal.modal('show');
+            });
+
+            saveButton.click(function () {
+               
+                var productId = $('#productId').val();
+                var productName = $('#productName').val();
+                var productPrice = $('#productPrice').val();
+                var productQuantity = $('#productQuantity').val();
+
+                if (ModelStatus == 'create') {
+                    productId = 0;
+                }
+                var saveobject = {
+                    Id: productId,
+                    Name: productName,
+                    Price: parseFloat(productPrice),
+                    Quantity: parseFloat(productQuantity)
+                }
+
+                console.log(productId || ModelStatus)
+
+                if (ModelStatus == 'create')
+                {
+                
+                $.ajax({
+                    url: '/Products/SaveProduct',
+                    type: 'POST',
+                    contentType: "application/json",
+                    data: JSON.stringify(saveobject),
+                    success: function () {
+                     
+                        modal.modal('hide');
+                        if (confirm("Product details saved successfully.")) {
+                            location.reload();
+                        }
+                    },
+                    error: function () {
+                        alert('Failed to save product details.');
+                    }
+                });
+                }
+                else{
+
+                    $.ajax({
+                        url: '/Products/UpdateProduct',
+                        type: 'POST',
+                        contentType: "application/json",
+                        data: JSON.stringify(saveobject),
+                        success: function () {
+                            modal.modal('hide');
+                            alert('Product details updated successfully.');
+                            
+                        },
+                        error: function () {
+                            alert('Failed to save product details.');
+                        }
+                    });
+                }
+            });
+
+            modal.on('hidden.bs.modal', function () {
+                form.trigger('reset');
+                $('body').removeClass('modal-open');
+                $('.modal-backdrop').remove();
+            });
+
+            $('#closeModal').click(function () {
+                modal.modal('hide');
+            });
+        });
+    </script>
+</body>
+</html>
